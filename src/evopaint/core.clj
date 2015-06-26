@@ -5,8 +5,8 @@
            java.awt.image.BufferedImage
            javax.imageio.ImageIO))
 
-(def width 432)
-(def height 288)
+(def width 400)
+(def height 267)
 (def population (atom nil))
 (def reference-image (atom nil))
 (def fittest (atom nil))
@@ -23,10 +23,11 @@
   (vec (take 4 (repeatedly #(rand-int 255)))))
 
 (defn random-gene []
-  {:x (rand-int width)
-   :y (rand-int height)
-   :r (+ 5 (rand-int 55))
-   :c (random-color)})
+  (let [r (+ 5 (rand-int 55))]
+    {:x (- (rand-int (+ width r)) r)
+     :y (- (rand-int (+ height r)) r)
+     :r r
+     :c (random-color)}))
 
 (defn gene-sequence [n]
   (vec (take n (repeatedly #(random-gene)))))
@@ -104,7 +105,12 @@
   (map #(hash-map :score (score-fitness %) :genes %) pop))
 
 (defn evolve-generation []
-  (reset! population (map :genes (take 20 (sort-by :score (prescore (breed @population)))))))
+  (reset! population (->> @population
+                          (breed)
+                          (prescore)
+                          (sort-by :score)
+                          (take 20)
+                          (map :genes))))
 
 (defn start [panel]
   (future
@@ -115,7 +121,7 @@
 
 (defn -main [& args]
   (reset! reference-image (load-image "/tmp/image.jpg"))
-  (reset! population (initial-population 20 10))
+  (reset! population (initial-population 30 100))
 
   (let [panel (create-panel)]
     (.setPreferredSize panel (Dimension. width height))

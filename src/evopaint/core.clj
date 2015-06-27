@@ -20,10 +20,10 @@
   (BufferedImage. w h BufferedImage/TYPE_INT_ARGB))
 
 (defn random-color []
-  (vec (take 4 (repeatedly #(rand-int 255)))))
+  (take 4 (repeatedly #(rand-int 255))))
 
 (defn random-gene []
-  (let [r (+ 5 (rand-int 55))]
+  (let [r (+ 5 (rand-int 20))]
     {:x (- (rand-int (+ width r)) r)
      :y (- (rand-int (+ height r)) r)
      :r r
@@ -35,14 +35,9 @@
 (defn initial-population [n m]
   (vec (take n (repeatedly #(gene-sequence m)))))
 
-(defn cosmic-rays
-  [genes]
-  (conj (assoc genes (rand-int (- (count genes) 1)) (random-gene))
-        (random-gene)))
-
 (defn reproduce
   [father mother]
-  (cosmic-rays (vec (map #(rand-nth [%1 %2]) mother father))))
+  (vec (map #(rand-nth [%1 %2 %3]) mother father (repeatedly random-gene))))
 
 (defn render-gene
   [^Graphics2D g2d gene]
@@ -88,13 +83,12 @@
     (map #(let [i (mod % width)
                 j (quot % width)]
             (diff-color (.getRGB a i j) (.getRGB b i j)))
-         (range (* width height)))))
+         (range 0 (* width height) 5))))
 
 (defn score-fitness
   [genes]
   (let [i (create-image width height)]
     (render-genes genes (.createGraphics i))
-    (time (compare-images @reference-image i))
     (compare-images @reference-image i)))
 
 (defn breed [pop]
@@ -102,26 +96,26 @@
 
 (defn prescore
   [pop]
-  (map #(hash-map :score (score-fitness %) :genes %) pop))
+  (pmap #(hash-map :score (score-fitness %) :genes %) pop))
 
 (defn evolve-generation []
   (reset! population (->> @population
                           (breed)
                           (prescore)
                           (sort-by :score)
-                          (take 20)
+                          (take 50)
                           (map :genes))))
 
 (defn start [panel]
   (future
     (while true
-      (evolve-generation)
+      (time (evolve-generation))
       (reset! fittest (last @population))
       (.repaint panel))))
 
 (defn -main [& args]
   (reset! reference-image (load-image "/tmp/image.jpg"))
-  (reset! population (initial-population 30 100))
+  (reset! population (initial-population 50 1000))
 
   (let [panel (create-panel)]
     (.setPreferredSize panel (Dimension. width height))
